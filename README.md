@@ -235,6 +235,8 @@ gaussian-splats/
 
 ## MVP v1
 - Feature extraction + matching: ~53 mins
-- Brush: ~6 mins 
-- Conversion: 1 sec
+- Brush + conversion: ~6 mins 
 
+## MVP v2
+- Feature extraction + matching: ~20mins
+- Brush + conversion: ~10 mins

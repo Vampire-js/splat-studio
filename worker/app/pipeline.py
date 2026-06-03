@@ -42,6 +42,23 @@ TRAIN_SH_DEGREE = int(os.environ.get("PIPELINE_SH_DEGREE", "2"))
 TRAIN_MAX_RESOLUTION = int(os.environ.get("PIPELINE_TRAIN_MAX_RES", "1280"))
 CLEANUP_INTERMEDIATES = os.environ.get("PIPELINE_CLEANUP", "1") != "0"
 
+# --- SfM matcher selection ----------------------------------------------------
+# auto       -> sequential if PIPELINE_SEQUENTIAL=1, else vocab_tree if N>auto_threshold
+#               and a vocab tree file is available, else exhaustive.
+# exhaustive -> O(N^2), gold standard, slowest. Safe default for small unordered sets.
+# sequential -> O(N), only correct for ordered captures (video frames, dense orbits).
+# vocab_tree -> O(N*k), retrieval-pruned; needs PIPELINE_VOCAB_TREE_PATH to point
+#               at a pretrained vocab tree (see scripts/install-vocab-tree.sh).
+PIPELINE_MATCHER = os.environ.get("PIPELINE_MATCHER", "auto").lower()
+PIPELINE_AUTO_VOCAB_THRESHOLD = int(os.environ.get("PIPELINE_AUTO_VOCAB_THRESHOLD", "80"))
+PIPELINE_VOCAB_TREE_PATH = os.environ.get("PIPELINE_VOCAB_TREE_PATH", "")
+# Whether `auto` may pick sequential. Off by default — only enable for ordered input.
+PIPELINE_SEQUENTIAL_HINT = os.environ.get("PIPELINE_SEQUENTIAL", "0") != "0"
+# Cap features per image. Lower = faster matching (quadratic in feature count per pair).
+PIPELINE_SIFT_MAX_FEATURES = int(os.environ.get("PIPELINE_SIFT_MAX_FEATURES", "4096"))
+# Threads for matching. -1 = use all cores.
+PIPELINE_MATCH_THREADS = int(os.environ.get("PIPELINE_MATCH_THREADS", "-1"))
+
 
 # ---------------------------------------------------------------------------
 # Capability detection
@@ -104,6 +121,61 @@ def _downscale_images(src_dir: Path, dst_dir: Path, max_edge: int) -> int:
     return n
 
 
+def _resolve_vocab_tree() -> Path | None:
+    """Locate a usable vocab tree file, or None if unavailable."""
+    if PIPELINE_VOCAB_TREE_PATH:
+        p = Path(PIPELINE_VOCAB_TREE_PATH)
+        if p.is_file():
+            return p
+        log.warning("PIPELINE_VOCAB_TREE_PATH set but file missing: %s", p)
+    bundled = Path(__file__).resolve().parent.parent / "models" / "vocab_tree_flickr100K_words32K.bin"
+    return bundled if bundled.is_file() else None
+
+
+def _choose_matcher(n_images: int) -> str:
+    """Pick a matcher mode given user config + image count."""
+    mode = PIPELINE_MATCHER
+    if mode != "auto":
+        return mode
+    if PIPELINE_SEQUENTIAL_HINT:
+        return "sequential"
+    if n_images > PIPELINE_AUTO_VOCAB_THRESHOLD and _resolve_vocab_tree() is not None:
+        return "vocab_tree"
+    return "exhaustive"
+
+
+def _run_matching(db_path: Path, n_images: int) -> str:
+    """Dispatch to the configured matcher. Returns the mode actually used."""
+    import pycolmap
+
+    mode = _choose_matcher(n_images)
+    sift = pycolmap.SiftMatchingOptions(num_threads=PIPELINE_MATCH_THREADS)
+    log.info("matching: mode=%s n_images=%d threads=%d", mode, n_images, PIPELINE_MATCH_THREADS)
+
+    if mode == "exhaustive":
+        pycolmap.match_exhaustive(str(db_path), sift_options=sift)
+    elif mode == "sequential":
+        opts = pycolmap.SequentialMatchingOptions(overlap=10, quadratic_overlap=True)
+        pycolmap.match_sequential(str(db_path), sift_options=sift, matching_options=opts)
+    elif mode == "vocab_tree":
+        vt = _resolve_vocab_tree()
+        if vt is None:
+            log.warning("vocab_tree requested but no tree file found; falling back to exhaustive")
+            pycolmap.match_exhaustive(str(db_path), sift_options=sift)
+            return "exhaustive (fallback)"
+        opts = pycolmap.VocabTreeMatchingOptions(
+            vocab_tree_path=str(vt),
+            num_images=min(100, max(20, n_images // 2)),
+            num_threads=PIPELINE_MATCH_THREADS,
+        )
+        pycolmap.match_vocabtree(str(db_path), sift_options=sift, matching_options=opts)
+    else:
+        raise ValueError(
+            f"PIPELINE_MATCHER={mode!r} invalid (use auto|exhaustive|sequential|vocab_tree)"
+        )
+    return mode
+
+
 def _run_sfm(image_dir: Path, work_dir: Path) -> Path:
     """Run COLMAP SfM. Returns the path of the produced sparse model directory."""
     import pycolmap
@@ -115,20 +187,27 @@ def _run_sfm(image_dir: Path, work_dir: Path) -> Path:
     if db_path.exists():
         db_path.unlink()
 
+    n_images = sum(1 for p in image_dir.iterdir() if p.is_file())
+
     # Single-camera + SIMPLE_RADIAL is the right call for orbit captures of one
     # object taken with the same phone — fewer free parameters, more stable
     # poses on small image sets.
+    sift_extract = pycolmap.SiftExtractionOptions(
+        num_threads=PIPELINE_MATCH_THREADS,
+        max_num_features=PIPELINE_SIFT_MAX_FEATURES,
+    )
     pycolmap.extract_features(
-        database_path=db_path,
-        image_path=image_dir,
+        database_path=str(db_path),
+        image_path=str(image_dir),
         camera_mode=pycolmap.CameraMode.SINGLE,
         camera_model="SIMPLE_RADIAL",
+        sift_options=sift_extract,
     )
-    pycolmap.match_exhaustive(db_path)
+    _run_matching(db_path, n_images)
     maps = pycolmap.incremental_mapping(
-        database_path=db_path,
-        image_path=image_dir,
-        output_path=sparse_root,
+        database_path=str(db_path),
+        image_path=str(image_dir),
+        output_path=str(sparse_root),
     )
     if not maps:
         raise RuntimeError("COLMAP failed to reconstruct any cameras from the input images.")

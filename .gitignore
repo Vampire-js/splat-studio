@@ -22,3 +22,6 @@ worker/_storage/
 
 # Trainer binary (164 MB) — fetched via worker/scripts/install-brush.sh
 worker/bin/
+
+# Pretrained models (vocab tree etc.) — fetched via scripts/install-*.sh
+worker/models/
