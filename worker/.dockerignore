@@ -1,0 +1,26 @@
+# Build context hygiene — keep image small + deterministic.
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.env
+.env.local
+.env.*.local
+
+# Local artifacts / logs — never bake into image.
+_storage/
+*.log
+perf.log
+worker.log
+
+# Big optional artifacts; the image either fetches them at build time (brush)
+# or already ships them via COPY (models/).
+bin/
+
+# Build/test debris from elsewhere.
+target/
+tests/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

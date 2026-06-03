@@ -1,0 +1,30 @@
+# Local sanity check for the dockerized worker.
+# Use:
+#   docker compose up --build           # CPU image, stub training fallback
+#   INSTALL_BRUSH=1 docker compose up --build   # adds brush + Vulkan (GPU host)
+#
+# Production deploy on Azure is just:
+#   docker build -t splats-worker .
+#   docker run -d --restart unless-stopped \
+#       -p 8000:8000 \
+#       -v /var/lib/splats/_storage:/data/_storage \
+#       -e CORS_ORIGINS=https://your-vercel-app.vercel.app \
+#       splats-worker
+
+services:
+  worker:
+    build:
+      context: .
+      args:
+        INSTALL_BRUSH: ${INSTALL_BRUSH:-0}
+    image: splats-worker:${INSTALL_BRUSH:+gpu}${INSTALL_BRUSH:-cpu}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./_storage:/data/_storage
+    environment:
+      # Set this to your Vercel preview/prod domain in production.
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      PIPELINE_MATCHER: ${PIPELINE_MATCHER:-auto}
+      PIPELINE_MAPPER: ${PIPELINE_MAPPER:-auto}
+    restart: unless-stopped

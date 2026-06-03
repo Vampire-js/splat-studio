@@ -28,11 +28,16 @@ STUB_PROCESSING_SECONDS = float(os.environ.get("STUB_PROCESSING_SECONDS", "4"))
 
 app = FastAPI(title="Gaussian Splats Worker", version="0.0.1")
 
-# CORS: in v0 the Next.js API proxies the worker, but allowing localhost dev
-# origins keeps things easy if you call the worker directly from a browser.
+# CORS: comma-separated origins via CORS_ORIGINS. "*" allows all (dev only).
+# Production: set CORS_ORIGINS=https://your-frontend.vercel.app
+_raw_origins = os.environ.get(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000",
+).strip()
+_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
