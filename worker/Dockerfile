@@ -53,11 +53,16 @@ RUN if [ "$INSTALL_BRUSH" = "1" ]; then \
     fi
 
 # -----------------------------------------------------------------------------
-# App code + always-bundled small assets (vocab tree, sample splat)
+# App code + always-bundled small assets (sample splat).
+# The vocab tree (~9 MB) is fetched at build time so it doesn't need to live
+# in the git repo. Same trick as the brush binary.
 # -----------------------------------------------------------------------------
 COPY app/ ./app/
 COPY samples/ ./samples/
-COPY models/ ./models/
+
+RUN mkdir -p models && \
+    curl -fL --retry 3 -o models/vocab_tree_faiss_flickr100K_words32K.bin \
+        https://github.com/colmap/colmap/releases/download/3.11.1/vocab_tree_faiss_flickr100K_words32K.bin
 
 # Runtime knobs (override at `docker run -e ...`)
 ENV STORAGE_ROOT=/data/_storage \
