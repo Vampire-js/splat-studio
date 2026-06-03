@@ -1,0 +1,5 @@
+[project]
+name = "gaussian-splats-worker"
+version = "0.0.1"
+description = "Pipeline worker for the Gaussian Splats SaaS POC."
+requires-python = ">=3.10"

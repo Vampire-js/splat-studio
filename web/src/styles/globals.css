@@ -1,0 +1,9 @@
+:root {
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #010409; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+a { color: #58a6ff; }
+main { max-width: 960px; margin: 0 auto; padding: 32px 20px; }
+h1, h2 { color: #f0f6fc; }
+button:disabled { opacity: 0.6; }

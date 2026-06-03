@@ -1,0 +1,24 @@
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Node / Next
+web/node_modules/
+web/.next/
+web/out/
+web/.env
+web/.env.local
+
+# Python / worker
+worker/.venv/
+worker/__pycache__/
+worker/app/__pycache__/
+worker/.env
+worker/_storage/
+
+# Logs
+*.log
+
+# Trainer binary (164 MB) — fetched via worker/scripts/install-brush.sh
+worker/bin/
