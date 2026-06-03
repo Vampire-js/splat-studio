@@ -1,5 +1,5 @@
 # Splat Studio — POC v0
-
+![alt text](image.png)
 Turn a set of photos into an **embeddable 3D Gaussian Splat** of an object.
 Drop the generated `<iframe>` into any website — like Spline or Sketchfab, but
 photorealistic because the model comes from real photos (lighting, reflections,
@@ -241,7 +241,12 @@ gaussian-splats/
 - Feature extraction + matching: ~20mins
 - Brush + conversion: ~10 mins
 
-## MVP v3 (GLOMAP + SIFT Features halved)
+## MVP v3 (GLOMAP + Max SIFT Features 2048)
 - Feature extraction + matching: ~15 mins
 - Brush + conversion: ~14 mins
+- Drop in quality
+
+## MVP v3 (GLOMAP + Max SIFT Features 4096)
+- Feature extraction + matching: ~9 mins
+- Brush + conversion: ~7 mins
 - Drop in quality
