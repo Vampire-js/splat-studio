@@ -12,8 +12,12 @@ cd "$(dirname "$0")/.."   # -> worker/
 mkdir -p models
 cd models
 
-FILE="vocab_tree_flickr100K_words32K.bin"
-URL="https://demuc.de/colmap/${FILE}"
+# pycolmap >= 4.0 / COLMAP >= 3.12 uses FAISS for vocab tree indexing
+# (was FLANN before May 2025). We need the *_faiss_*.bin variant; the legacy
+# vocab_tree_flickr100K_words32K.bin (FLANN) will abort with
+# "Check failed: file_version == 1 || file_version == 2".
+FILE="vocab_tree_faiss_flickr100K_words32K.bin"
+URL="https://github.com/colmap/colmap/releases/download/3.11.1/${FILE}"
 
 if [[ -f "$FILE" ]]; then
   echo "vocab tree already present: $(pwd)/$FILE"

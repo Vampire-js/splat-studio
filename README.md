@@ -233,10 +233,15 @@ gaussian-splats/
 - Add auth (Clerk/Auth.js) and per-tenant rate limits before opening up.
 
 
-## MVP v1
+## MVP v1 (COLMAP + exhaustive)
 - Feature extraction + matching: ~53 mins
 - Brush + conversion: ~6 mins 
 
-## MVP v2
+## MVP v2 (COLMAP + vocab tree)
 - Feature extraction + matching: ~20mins
 - Brush + conversion: ~10 mins
+
+## MVP v3 (GLOMAP + SIFT Features halved)
+- Feature extraction + matching: ~15 mins
+- Brush + conversion: ~14 mins
+- Drop in quality
